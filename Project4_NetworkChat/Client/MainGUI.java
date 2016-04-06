@@ -1,7 +1,9 @@
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-
+import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -119,9 +121,14 @@ public class MainGUI {
 		JButton connect = new JButton("Connect");
 		connect.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e){
-				if(!connected)
-					tryConnect();
-				else
+				if(!connected){
+					Thread connectThread = new Thread(){
+						public void run(){
+							tryConnect();
+						}
+					};
+					connectThread.start();
+				}else
 					disconnect();
 			}
 		});
@@ -217,7 +224,7 @@ public class MainGUI {
 				if(sendMsg.getText().length() > 0){
 					int[] selected = onlineList.getSelectedIndices();
 					for(int i = 0; i < selected.length; i++)
-						System.out.println(((User)onlineList.getModel().getElementAt(selected[i])).name);
+						System.out.println(((User)onlineList.getModel().getElementAt(selected[i])).getName());
 				}else{
 					JOptionPane.showMessageDialog(null, "Please input message for sending.");
 				}
@@ -250,7 +257,20 @@ public class MainGUI {
 					int portInt = Integer.parseInt(portNo);
 					String name = nameInput.getText();
 					if(name.length() > 0 && !nameExisted(name)){
-						connect(ipAdd, portInt, name);
+						System.out.println("Connecting");
+						client = new Socket(ipAdd, portInt);
+						System.out.println("Connected");
+						outgoing = new ObjectOutputStream(client.getOutputStream());
+						incoming = new ObjectInputStream(client.getInputStream());
+						User newUser = new User(name);
+						ArrayList<User> emptyUserList = new ArrayList<User>();
+						Message connectRequest = new Message(1, newUser, emptyUserList, "");
+						try{
+							outgoing.writeObject(connectRequest);
+							outgoing.flush();
+						}catch(IOException ioe){
+							JOptionPane.showMessageDialog(null, "Request connect error.");
+						}
 					}else{
 						JOptionPane.showMessageDialog(null, "Blank username field or username has already been used. Please input a new username.");
 					}
@@ -265,9 +285,29 @@ public class MainGUI {
 		}
 	}
 	
-	private static void connect(String ip, int p, String n){
-		
-	}
+//	private static void connect(String ip, int p, String n){
+//		try{
+//			System.out.println("Connecting");
+//			client = new Socket(ip, p);
+//			System.out.println("Connected");
+//			System.out.println(client.isConnected());
+//			outgoing = new ObjectOutputStream(client.getOutputStream());
+//			incoming = new ObjectInputStream(client.getInputStream());
+//		}catch(UnknownHostException uhe){
+//			JOptionPane.showMessageDialog(null, "Server unknown error.");
+//		}catch(IOException ioe){
+//			JOptionPane.showMessageDialog(null, "Cannot get I/O stream.");
+//		}
+//		User newUser = new User(n);
+//		ArrayList<User> emptyUserList = new ArrayList<User>();
+//		Message connectRequest = new Message(1, newUser, emptyUserList, "");
+//		try{
+//			outgoing.writeObject(connectRequest);
+//			outgoing.flush();
+//		}catch(IOException ioe){
+//			JOptionPane.showMessageDialog(null, "Request connect error.");
+//		}
+//	}
 	
 	private static void disconnect(){
 		
