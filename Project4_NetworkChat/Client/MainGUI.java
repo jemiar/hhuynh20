@@ -9,18 +9,25 @@ import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.text.StyledDocument;
+
 
 public class MainGUI {
 	
 	private static JTextField ipInput;
 	private static JTextField portInput;
 	private static JTextField nameInput;
+	private static JButton connect;
 	private static JButton send = new JButton("Send");
 	private static JTextArea sendMsg = new JTextArea();
 	private static boolean connected = false;
 	private static Socket client;
 	private static ObjectOutputStream outgoing;
 	private static ObjectInputStream incoming;
+	private static DefaultListModel<User> model;
+	private static JTextPane msgPane;
+	private static StyledDocument doc;
+	private static User newUser;
 
 	public static void main(String[] args) {
 
@@ -118,7 +125,7 @@ public class MainGUI {
 		frame.add(nameInput, c5);
 		
 		//Connect/Disconnect button
-		JButton connect = new JButton("Connect");
+		connect = new JButton("Connect");
 		connect.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e){
 				if(!connected){
@@ -128,8 +135,14 @@ public class MainGUI {
 						}
 					};
 					connectThread.start();
-				}else
-					disconnect();
+				}else{
+					Thread disconnectThread = new Thread(){
+						public void run(){
+							disconnect();
+						}
+					};
+					disconnectThread.run();
+				}
 			}
 		});
 		GridBagConstraints c6 = new GridBagConstraints();
@@ -151,9 +164,10 @@ public class MainGUI {
 		frame.add(onlineUser, c6);
 		
 		//Message area
-		JTextPane msgPane = new JTextPane();
+		msgPane = new JTextPane();
 		msgPane.setEditable(false);
 		JScrollPane msgScroll = new JScrollPane(msgPane);
+		msgScroll.setPreferredSize(new Dimension(250, 45));
 		msgScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 		GridBagConstraints c7 = new GridBagConstraints();
 		c7.fill = GridBagConstraints.HORIZONTAL;
@@ -165,7 +179,7 @@ public class MainGUI {
 		frame.add(msgScroll, c7);
 		
 		//Online users list area
-		DefaultListModel<User> model = new DefaultListModel<User>();
+		model = new DefaultListModel<User>();
 		JList onlineList = new JList(model);
 		onlineList.setLayoutOrientation(JList.VERTICAL);
 		onlineList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
@@ -190,12 +204,6 @@ public class MainGUI {
 		c8.gridx = 3;
 		c8.gridy = 3;
 		frame.add(onlineScroll, c8);
-		
-		model.addElement(new User("Minh"));
-		model.addElement(new User("Tran"));
-		model.addElement(new User("Hoai Mi"));
-		model.addElement(new User("Khanh Mi"));
-		model.addElement(new User("Jemiar"));
 		
 		//Composing message label
 		JLabel composLabel = new JLabel(" Compose message:");
@@ -256,13 +264,57 @@ public class MainGUI {
 				try{
 					int portInt = Integer.parseInt(portNo);
 					String name = nameInput.getText();
-					if(name.length() > 0 && !nameExisted(name)){
-						System.out.println("Connecting");
+					if(name.length() > 0){
 						client = new Socket(ipAdd, portInt);
-						System.out.println("Connected");
 						outgoing = new ObjectOutputStream(client.getOutputStream());
-						incoming = new ObjectInputStream(client.getInputStream());
-						User newUser = new User(name);
+						Thread listenThread = new Thread(){
+							public void run(){
+								try {
+									incoming = new ObjectInputStream(client.getInputStream());
+									Message input;
+									while((input = (Message)incoming.readObject()) != null){
+										int t = input.getType();
+										switch(t){
+										case 3:
+											break;
+										case 4:
+											JOptionPane.showMessageDialog(null, "This username has already been used. Please choose another one.");
+											break;
+										case 5:
+											connected = true;
+											doc = msgPane.getStyledDocument();
+											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
+											ArrayList<User> usList = input.getUserList();
+											for(int i = 0; i < usList.size(); i++)
+												model.addElement(usList.get(i));
+											connect.setText("Disconnect");
+											break;
+										case 6:
+											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
+											break;
+										case 7:
+											connected = false;
+											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
+											model.clear();
+											connect.setText("Connect");
+											break;
+										case 8:
+											User newUS = input.getUser();
+											model.addElement(newUS);
+											break;
+										default:
+											System.out.println("Unknown message type");
+											break;
+										}
+									}
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
+							}
+						};
+						listenThread.start();
+
+						newUser = new User(name);
 						ArrayList<User> emptyUserList = new ArrayList<User>();
 						Message connectRequest = new Message(1, newUser, emptyUserList, "");
 						try{
@@ -272,7 +324,7 @@ public class MainGUI {
 							JOptionPane.showMessageDialog(null, "Request connect error.");
 						}
 					}else{
-						JOptionPane.showMessageDialog(null, "Blank username field or username has already been used. Please input a new username.");
+						JOptionPane.showMessageDialog(null, "Please input your username.");
 					}
 				}catch(Exception e){
 					JOptionPane.showMessageDialog(null, "Please input a numeric value for server's port number.");
@@ -285,36 +337,14 @@ public class MainGUI {
 		}
 	}
 	
-//	private static void connect(String ip, int p, String n){
-//		try{
-//			System.out.println("Connecting");
-//			client = new Socket(ip, p);
-//			System.out.println("Connected");
-//			System.out.println(client.isConnected());
-//			outgoing = new ObjectOutputStream(client.getOutputStream());
-//			incoming = new ObjectInputStream(client.getInputStream());
-//		}catch(UnknownHostException uhe){
-//			JOptionPane.showMessageDialog(null, "Server unknown error.");
-//		}catch(IOException ioe){
-//			JOptionPane.showMessageDialog(null, "Cannot get I/O stream.");
-//		}
-//		User newUser = new User(n);
-//		ArrayList<User> emptyUserList = new ArrayList<User>();
-//		Message connectRequest = new Message(1, newUser, emptyUserList, "");
-//		try{
-//			outgoing.writeObject(connectRequest);
-//			outgoing.flush();
-//		}catch(IOException ioe){
-//			JOptionPane.showMessageDialog(null, "Request connect error.");
-//		}
-//	}
-	
 	private static void disconnect(){
-		
-	}
-	
-	private static boolean nameExisted(String s){
-		return false;
+		Message disconnectRequest = new Message(2, newUser, new ArrayList<User>(), "");
+		try {
+			outgoing.writeObject(disconnectRequest);
+			outgoing.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 }
