@@ -8,7 +8,7 @@ public class ServerMain extends Thread{
 
 	public static void main(String[] args) throws IOException{
 		ServerSocket serverSocket = null;
-		int p = 8746;
+		int p = 8778;
 		try{
 			serverSocket = new ServerSocket(p);
 			System.out.println("Server run at IP Address: " + InetAddress
@@ -43,36 +43,40 @@ public class ServerMain extends Thread{
 			Message input;
 			while((input = (Message)in.readObject()) != null){
 				int t = input.getType();
+				OnlineUsers online = OnlineUsers.getInstance();
+				User u = input.getUser();
+				ArrayList<User> uList = online.getUserList();
 				switch(t){
 				case 1:
-					OnlineUsers online = OnlineUsers.getInstance();
-					User u = input.getUser();
-					ArrayList<User> uList = online.getList();
 					if(!userExisted(u, uList)){
-						Message successConnectRespond = new Message(5, u, uList, "Server: Connect success");
+						Message successConnectRespond = new Message(5, u, uList, "Server: Connect success\n");
 						out.writeObject(successConnectRespond);
 						out.flush();
-						online.addUser(u);
+						requestAddUser(uList, online.getSocketList(), online.getOutStreamList(), u);
+						online.addUser(u, clientSocket, out, in);
 					}else{
-						Message failConnectRespond = new Message(4, u, uList, "Server: Connect fail");
+						Message failConnectRespond = new Message(4, u, uList, "Server: Connect fail\n");
 						out.writeObject(failConnectRespond);
 						out.flush();
 					}
-//					online.addUser(input.getUser());
-//					ArrayList<User> uList = online.getList();
-//					for(int i = 0; i < uList.size(); i++)
-//						System.out.println(uList.get(i).toString());
+					break;
+				case 2:
+					if(userExisted(u, uList)){
+						online.removeUser(u);
+						Message successDisconnectResp = new Message(7, u, uList, "Sever: Disconnect success\n");
+						out.writeObject(successDisconnectResp);
+						out.flush();
+						requestRemoveUser(online.getUserList(), online.getSocketList(), online.getOutStreamList(), u);
+					}else{
+						Message failDisconnectResp = new Message(6, u, uList, "Server: Disconnect fail\n");
+						out.writeObject(failDisconnectResp);
+						out.flush();
+					}
 					break;
 				default:
 					System.out.println("Unknown message type");
 					break;
 				}
-//				System.out.println( input.getUser().toString() + input.getType());
-//				OnlineUsers online = OnlineUsers.getInstance();
-//				online.addUser(input.getUser());
-//				ArrayList<User> uList = online.getList();
-//				for(int i = 0; i < uList.size(); i++)
-//					System.out.println(uList.get(i).toString());
 			}
 		}catch(Exception e){
 			e.printStackTrace();
@@ -85,6 +89,30 @@ public class ServerMain extends Thread{
 			if(us.getName().equals(uL.get(i).getName()))
 				return true;
 		return false;
+	}
+	
+	public void requestAddUser(ArrayList<User> uL, ArrayList<Socket> sL, ArrayList<ObjectOutputStream> opList, User uS){
+		for(int i = 0; i < uL.size(); i++){
+			try {
+				Message m = new Message(8, uS, uL, "");
+				opList.get(i).writeObject(m);
+				opList.get(i).flush();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	public void requestRemoveUser(ArrayList<User> uL, ArrayList<Socket> sL, ArrayList<ObjectOutputStream> opList, User uS){
+		for(int i = 0; i < uL.size(); i++){
+			try{
+				Message m = new Message(9, uS, uL, "");
+				opList.get(i).writeObject(m);
+				opList.get(i).flush();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 }
