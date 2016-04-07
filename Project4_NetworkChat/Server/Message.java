@@ -23,5 +23,13 @@ public class Message implements Serializable{
 	public User getUser(){
 		return sender;
 	}
+	
+	public String getMessage(){
+		return msg;
+	}
+	
+	public ArrayList<User> getUserList(){
+		return receivers;
+	}
 }
  
