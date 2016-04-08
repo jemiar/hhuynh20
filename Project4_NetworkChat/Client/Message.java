@@ -15,4 +15,20 @@ public class Message implements Serializable{
 			receivers.add(rs.get(i));
 		msg = m;
 	}
+	
+	public int getType(){
+		return type;
+	}
+	
+	public User getUser(){
+		return sender;
+	}
+	
+	public String getMessage(){
+		return msg;
+	}
+	
+	public ArrayList<User> getUserList(){
+		return receivers;
+	}
 }
