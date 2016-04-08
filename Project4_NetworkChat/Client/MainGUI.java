@@ -1,3 +1,10 @@
+//CS 342 - SPRING 2016
+//Project 4: Network chat application
+//Developed by: Hoang Minh Huynh Nguyen (hhuynh20) Nikolay Zakharov (nzakha2)
+
+//Class: MainGUI.java
+//Responsibility: build GUI, handle network and interaction
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -13,29 +20,51 @@ import javax.swing.text.StyledDocument;
 
 public class MainGUI {
 	
-	private static JTextField ipInput;
-	private static JTextField portInput;
-	private static JTextField nameInput;
-	private static JButton connect;
-	private static JButton send = new JButton("Send");
-	private static JTextArea sendMsg = new JTextArea();
-	private static boolean connected = false;
-	private static Socket client;
-	private static ObjectOutputStream outgoing;
-	private static ObjectInputStream incoming;
-	private static DefaultListModel<User> model;
-	private static JTextPane msgPane;
-	private static StyledDocument doc;
-	private static User newUser;
-	private static ArrayList<User> selectedUser;
-	private static JList onlineList;
+	private static JTextField ipInput;						//text field for input server's IP Address
+	private static JTextField portInput;					//text field for input server's port number
+	private static JTextField nameInput;					//text field for input username
+	private static JButton connect;							//button: click to connect to or disconnect from server
+	private static JButton send = new JButton("Send");		//button: click to send message
+	private static JTextArea sendMsg = new JTextArea();		//text area: for composing message
+	private static boolean connected = false;				//used for manage state of connection
+	private static Socket client;							//store socket of client side
+	private static ObjectOutputStream outgoing;				//store outgoing stream
+	private static ObjectInputStream incoming;				//store incoming stream
+	private static DefaultListModel<User> model;			//model used in list to display list of online users
+	private static JTextPane msgPane;						//text pane for displaying incoming message
+	private static StyledDocument doc;						//document in text pane
+	private static User newUser;							//user of this client
+	private static ArrayList<User> selectedUser;			//store list of users this client selects to send message
+	private static JList onlineList;						//JList for list of online users
 
 	public static void main(String[] args) {
 
 //Setup GUI
 		//Setup frame
 		JFrame frame = new JFrame("Messenger Client 1.0");
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		//Add window close action listener: Make sure if user is currently connected, send a request to server to close streams, socket.
+		//For this type of request, no need for server's response
+		//Then close streams, socket on client side. Finally, exit program
+		frame.addWindowListener(new WindowAdapter(){
+			public void windowClosing(WindowEvent we){
+				if(connected){
+					Message closeRequest = new Message(10, newUser, new ArrayList<User>(), "");
+					try {
+						outgoing.writeObject(closeRequest);
+						outgoing.flush();
+						outgoing.close();
+						incoming.close();
+						client.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					System.exit(0);
+				}else{
+					System.exit(0);
+				}
+			}
+		});
 		frame.setResizable(false);
 		frame.setLayout(new GridBagLayout());
 		
@@ -59,11 +88,22 @@ public class MainGUI {
 		//Quit
 		JMenuItem quit = new JMenuItem("Quit");
 		quit.setMnemonic('Q');
+		//Same as when user closes the frame, make sure all streams, socket are closed before user exits.
 		quit.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent e){
-				int respond = JOptionPane.showConfirmDialog(null, "Are you sure to quit the program?", "", JOptionPane.YES_NO_OPTION);
-				if(respond == JOptionPane.YES_OPTION){
-					disconnect();
+			public void actionPerformed(ActionEvent ae){
+				if(connected){
+					Message closeRequest = new Message(10, newUser, new ArrayList<User>(), "");
+					try {
+						outgoing.writeObject(closeRequest);
+						outgoing.flush();
+						outgoing.close();
+						incoming.close();
+						client.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					System.exit(0);
+				}else{
 					System.exit(0);
 				}
 			}
@@ -127,6 +167,7 @@ public class MainGUI {
 		
 		//Connect/Disconnect button
 		connect = new JButton("Connect");
+		//Connect/Disconnect button. When click, start new thread to handle the connection
 		connect.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e){
 				if(!connected){
@@ -142,7 +183,7 @@ public class MainGUI {
 							disconnect();
 						}
 					};
-					disconnectThread.run();
+					disconnectThread.start();
 				}
 			}
 		});
@@ -184,7 +225,7 @@ public class MainGUI {
 		onlineList = new JList(model);
 		onlineList.setLayoutOrientation(JList.VERTICAL);
 		onlineList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-		
+		//add listener to the list: make sure the send message is only available when user selects one or more elements in the list
 		onlineList.addListSelectionListener(new ListSelectionListener(){
 			@Override
 			public void valueChanged(ListSelectionEvent e) {
@@ -228,6 +269,10 @@ public class MainGUI {
 		frame.add(sendScroll, ca);
 		
 		//Send button
+		//When button is clicked, get the list of selected receivers in the online list
+		//start new thread to send. Also make sure user doesn't send blank message.
+		//after sending the message, change the online list to original state(no selected),
+		//clear the composing area, and put focus to this field
 		send.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e){
 				if(sendMsg.getText().length() > 0){
@@ -263,8 +308,11 @@ public class MainGUI {
 		
 //End of GUI setup
 	}
+	//End of main method
 	
+	//Method: try to connect to server
 	private static void tryConnect(){
+		//Check server's IP address, port number and username are input correctly
 		String ipAdd = ipInput.getText();
 		if(ipAdd.length() > 0){
 			String portNo = portInput.getText();
@@ -273,9 +321,11 @@ public class MainGUI {
 					int portInt = Integer.parseInt(portNo);
 					String name = nameInput.getText();
 					if(name.length() > 0){
+						//Try to connect to server
 						client = new Socket(ipAdd, portInt);
 						outgoing = new ObjectOutputStream(client.getOutputStream());
 						newUser = new User(name);
+						//Send request to connect to server. Have to do this step, in order to prevent from 2 users have the same username
 						ArrayList<User> emptyUserList = new ArrayList<User>();
 						Message connectRequest = new Message(1, newUser, emptyUserList, "");
 						try{
@@ -284,20 +334,28 @@ public class MainGUI {
 						}catch(IOException ioe){
 							JOptionPane.showMessageDialog(null, "Request connect error.");
 						}
+						//Run the listening thread, this thread waits for incoming message
 						Thread listenThread = new Thread(){
 							public void run(){
 								try {
 									incoming = new ObjectInputStream(client.getInputStream());
 									Message input;
+									//Read the message and check the type of the message. Respond based on type of message.
 									while((input = (Message)incoming.readObject()) != null){
 										int t = input.getType();
+										//Type 3: regular message sent from other users
 										if(t == 3){
 											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
 										}
+										//Type 4: response from server for connection request. Fail connection due to username has already been used
 										if(t == 4){
 											JOptionPane.showMessageDialog(null, "This username has already been used. Please choose another one.");
 											break;
 										}
+										//Type 5: response from server for connection request. Successful connection
+										//Add server response to message area.
+										//Add online users to list
+										//Set IP address, port # and username fields to uneditable
 										if(t == 5){
 											connected = true;
 											doc = msgPane.getStyledDocument();
@@ -310,9 +368,14 @@ public class MainGUI {
 											portInput.setEditable(false);
 											nameInput.setEditable(false);
 										}
+										//Type 6: response from server for disconnect request. Fail to disconnect
 										if(t == 6){
 											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
 										}
+										//Type 7: Response from server for disconnect request. Successful disconnect.
+										//Add server response to message area.
+										//Clear online users list
+										//Change IP address, port #, and username field to editable
 										if(t == 7){
 											connected = false;
 											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
@@ -323,10 +386,13 @@ public class MainGUI {
 											nameInput.setEditable(true);
 											break;
 										}
+										//Type 8: Server request to add new user to online list as a new user has just connected to the server
 										if(t == 8){
 											User newUS = input.getUser();
 											model.addElement(newUS);
 										}
+										//Type 9: Server request to remove a user from online list as this user has just disconnected from the server
+										//Clear the online list, then adding the new list(currently online users)
 										if(t == 9){
 											model.clear();
 											for(int i = 0; i < input.getUserList().size(); i++)
@@ -334,6 +400,7 @@ public class MainGUI {
 													model.addElement(input.getUserList().get(i));
 										}
 									}
+									//Close streams, socket properly if user disconnect or not be able to connect
 									outgoing.close();
 									incoming.close();
 									client.close();
@@ -356,7 +423,10 @@ public class MainGUI {
 			JOptionPane.showMessageDialog(null, "Please input server's IP address.");
 		}
 	}
+	//End of tryConnect() method
 	
+	//Method to send request to disconnect
+	//Send a request to disconnect, then the listening thread will listen to server's response and disconnect properly
 	private static void disconnect(){
 		Message disconnectRequest = new Message(2, newUser, new ArrayList<User>(), "");
 		try {
@@ -366,7 +436,10 @@ public class MainGUI {
 			e.printStackTrace();
 		}
 	}
+	//End of disconnect() method
 	
+	//Method to send a message to other users.
+	//Send a request to server. Server will then process the message and forward it to the receivers.
 	private static void sendMessage(){
 		Message sendMsgRequest = new Message(3, newUser, selectedUser, newUser.getName() + ": " + sendMsg.getText() + "\n");
 		try {
@@ -376,5 +449,7 @@ public class MainGUI {
 			e.printStackTrace();
 		}
 	}
+	//End of sendMessage()
 
 }
+//End of MainGUI class
