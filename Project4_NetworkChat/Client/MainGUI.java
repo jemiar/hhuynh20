@@ -20,22 +20,22 @@ import javax.swing.text.StyledDocument;
 
 public class MainGUI {
 	
-	private static JTextField ipInput;						//text field for input server's IP Address
-	private static JTextField portInput;					//text field for input server's port number
-	private static JTextField nameInput;					//text field for input username
-	private static JButton connect;							//button: click to connect to or disconnect from server
+	private static JTextField ipInput;				//text field for input server's IP Address
+	private static JTextField portInput;				//text field for input server's port number
+	private static JTextField nameInput;				//text field for input username
+	private static JButton connect;					//button: click to connect to or disconnect from server
 	private static JButton send = new JButton("Send");		//button: click to send message
 	private static JTextArea sendMsg = new JTextArea();		//text area: for composing message
-	private static boolean connected = false;				//used for manage state of connection
-	private static Socket client;							//store socket of client side
-	private static ObjectOutputStream outgoing;				//store outgoing stream
-	private static ObjectInputStream incoming;				//store incoming stream
+	private static boolean connected = false;			//used for manage state of connection
+	private static Socket client;					//store socket of client side
+	private static ObjectOutputStream outgoing;			//store outgoing stream
+	private static ObjectInputStream incoming;			//store incoming stream
 	private static DefaultListModel<User> model;			//model used in list to display list of online users
-	private static JTextPane msgPane;						//text pane for displaying incoming message
-	private static StyledDocument doc;						//document in text pane
-	private static User newUser;							//user of this client
+	private static JTextPane msgPane;				//text pane for displaying incoming message
+	private static StyledDocument doc;				//document in text pane
+	private static User newUser;					//user of this client
 	private static ArrayList<User> selectedUser;			//store list of users this client selects to send message
-	private static JList onlineList;						//JList for list of online users
+	private static JList onlineList;				//JList for list of online users
 
 	public static void main(String[] args) {
 
