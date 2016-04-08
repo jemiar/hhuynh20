@@ -2,7 +2,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.awt.*;
 import java.awt.event.*;
@@ -28,6 +27,8 @@ public class MainGUI {
 	private static JTextPane msgPane;
 	private static StyledDocument doc;
 	private static User newUser;
+	private static ArrayList<User> selectedUser;
+	private static JList onlineList;
 
 	public static void main(String[] args) {
 
@@ -180,7 +181,7 @@ public class MainGUI {
 		
 		//Online users list area
 		model = new DefaultListModel<User>();
-		JList onlineList = new JList(model);
+		onlineList = new JList(model);
 		onlineList.setLayoutOrientation(JList.VERTICAL);
 		onlineList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		
@@ -230,9 +231,16 @@ public class MainGUI {
 		send.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e){
 				if(sendMsg.getText().length() > 0){
+					selectedUser = new ArrayList<User>();
 					int[] selected = onlineList.getSelectedIndices();
 					for(int i = 0; i < selected.length; i++)
-						System.out.println(((User)onlineList.getModel().getElementAt(selected[i])).getName());
+						selectedUser.add((User)onlineList.getModel().getElementAt(selected[i]));
+					Thread sendMsgThread = new Thread(){
+						public void run(){
+							sendMessage();
+						}
+					};
+					sendMsgThread.start();
 				}else{
 					JOptionPane.showMessageDialog(null, "Please input message for sending.");
 				}
@@ -267,53 +275,6 @@ public class MainGUI {
 					if(name.length() > 0){
 						client = new Socket(ipAdd, portInt);
 						outgoing = new ObjectOutputStream(client.getOutputStream());
-						Thread listenThread = new Thread(){
-							public void run(){
-								try {
-									incoming = new ObjectInputStream(client.getInputStream());
-									Message input;
-									while((input = (Message)incoming.readObject()) != null){
-										int t = input.getType();
-										switch(t){
-										case 3:
-											break;
-										case 4:
-											JOptionPane.showMessageDialog(null, "This username has already been used. Please choose another one.");
-											break;
-										case 5:
-											connected = true;
-											doc = msgPane.getStyledDocument();
-											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
-											ArrayList<User> usList = input.getUserList();
-											for(int i = 0; i < usList.size(); i++)
-												model.addElement(usList.get(i));
-											connect.setText("Disconnect");
-											break;
-										case 6:
-											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
-											break;
-										case 7:
-											connected = false;
-											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
-											model.clear();
-											connect.setText("Connect");
-											break;
-										case 8:
-											User newUS = input.getUser();
-											model.addElement(newUS);
-											break;
-										default:
-											System.out.println("Unknown message type");
-											break;
-										}
-									}
-								} catch (Exception e) {
-									e.printStackTrace();
-								}
-							}
-						};
-						listenThread.start();
-
 						newUser = new User(name);
 						ArrayList<User> emptyUserList = new ArrayList<User>();
 						Message connectRequest = new Message(1, newUser, emptyUserList, "");
@@ -323,6 +284,65 @@ public class MainGUI {
 						}catch(IOException ioe){
 							JOptionPane.showMessageDialog(null, "Request connect error.");
 						}
+						Thread listenThread = new Thread(){
+							public void run(){
+								try {
+									incoming = new ObjectInputStream(client.getInputStream());
+									Message input;
+									while((input = (Message)incoming.readObject()) != null){
+										int t = input.getType();
+										if(t == 3){
+											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
+										}
+										if(t == 4){
+											JOptionPane.showMessageDialog(null, "This username has already been used. Please choose another one.");
+											break;
+										}
+										if(t == 5){
+											connected = true;
+											doc = msgPane.getStyledDocument();
+											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
+											ArrayList<User> usList = input.getUserList();
+											for(int i = 0; i < usList.size(); i++)
+												model.addElement(usList.get(i));
+											connect.setText("Disconnect");
+											ipInput.setEditable(false);
+											portInput.setEditable(false);
+											nameInput.setEditable(false);
+										}
+										if(t == 6){
+											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
+										}
+										if(t == 7){
+											connected = false;
+											doc.insertString(doc.getLength(), input.getMessage(), doc.getStyle("regular"));
+											model.clear();
+											connect.setText("Connect");
+											ipInput.setEditable(true);
+											portInput.setEditable(true);
+											nameInput.setEditable(true);
+											break;
+										}
+										if(t == 8){
+											User newUS = input.getUser();
+											model.addElement(newUS);
+										}
+										if(t == 9){
+											model.clear();
+											for(int i = 0; i < input.getUserList().size(); i++)
+												if(!newUser.getName().equals(input.getUserList().get(i).getName()))
+													model.addElement(input.getUserList().get(i));
+										}
+									}
+									outgoing.close();
+									incoming.close();
+									client.close();
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
+							}
+						};
+						listenThread.start();
 					}else{
 						JOptionPane.showMessageDialog(null, "Please input your username.");
 					}
@@ -343,6 +363,16 @@ public class MainGUI {
 			outgoing.writeObject(disconnectRequest);
 			outgoing.flush();
 		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private static void sendMessage(){
+		Message sendMsgRequest = new Message(3, newUser, selectedUser, newUser.getName() + ": " + sendMsg.getText() + "\n");
+		try {
+			outgoing.writeObject(sendMsgRequest);
+			outgoing.flush();
+		} catch (IOException e){
 			e.printStackTrace();
 		}
 	}
