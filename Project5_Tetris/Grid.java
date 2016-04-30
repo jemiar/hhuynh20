@@ -1,3 +1,5 @@
+import java.util.Arrays;
+
 public class Grid {
 	private static Grid board = null;
 	private boolean[][] tiles = new boolean[Main.ROWS + 3][Main.COLS + 2];
@@ -5,6 +7,7 @@ public class Grid {
 	private int[] yPos = new int[4];
 	private int direction;
 	private int type;
+	private int minY;
 	
 	private Grid(){
 		for(int i = 0; i < Main.ROWS; i++)
@@ -21,6 +24,29 @@ public class Grid {
 			tiles[i][0] = true;
 			tiles[i][Main.COLS + 1] = true;
 		}
+		
+		minY = Main.ROWS;
+	}
+	
+	public void drop(int a){
+		if(a == minY){
+			tiles[a] = Arrays.copyOf(Main.emptyLine, Main.emptyLine.length);
+			minY += 1;
+		}else{
+			for(int i = a; i > minY; i--){
+				tiles[i] = Arrays.copyOf(tiles[i - 1], tiles[i - 1].length);
+			}
+			tiles[minY] = Arrays.copyOf(Main.emptyLine, Main.emptyLine.length);
+			minY += 1;
+		}
+	}
+	
+	public int getMinY(){
+		return minY;
+	}
+	
+	public void setMinY(int m){
+		minY = m;
 	}
 	
 	public boolean canMoveDown(){
