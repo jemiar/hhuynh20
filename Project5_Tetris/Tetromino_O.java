@@ -1,4 +1,3 @@
-import javax.swing.*;
 import javax.swing.Timer;
 import java.awt.*;
 import java.awt.event.*;
@@ -56,6 +55,11 @@ public class Tetromino_O extends Tetromino{
 					}
 					
 					break;
+					
+				case KeyEvent.VK_SPACE:
+					timer.setDelay(1);
+					break;
+					
 				default:
 					break;
 				}
