@@ -1,3 +1,10 @@
+//CS 342 - SPRING 2016
+//Project 5: Tetris
+//Developed by: Hoang Minh Huynh Nguyen (hhuynh20) Nikolay Zakharov (nzakha2)
+
+//Class: Tetromino_I.java
+//Responsibility: Represent the I Tetromino
+
 import javax.swing.Timer;
 import java.awt.*;
 import java.awt.event.*;
@@ -7,17 +14,20 @@ import java.util.Arrays;
 public class Tetromino_I extends Tetromino{
 	public Timer timer;
 	private static final int SIZE = 25;
+	private int pausePressed;
 	
-	public Tetromino_I(){
+	//Constructor
+	public Tetromino_I(int delay){
 		super();
 		setPreferredSize(new Dimension(Main.COLS*SIZE, Main.ROWS*SIZE));
 		Grid.getInstance().resetPiece();
 		Grid.getInstance().setType(1);
 		Grid.getInstance().setPiece(Grid.getInstance().getType());
 		Grid.getInstance().setDirection(0);
-
 		
-		timer = new Timer(1000, new ActionListener(){
+		pausePressed = 0;
+		
+		timer = new Timer(delay, new ActionListener(){
 			public void actionPerformed(ActionEvent e){
 				if(Grid.getInstance().canMoveDown()){
 					Grid.getInstance().pieceDown();
@@ -27,6 +37,7 @@ public class Tetromino_I extends Tetromino{
 		});
 		timer.start();
 		
+		//Action listener for keyboard event
 		this.addKeyListener(new KeyAdapter(){
 			public void keyPressed(KeyEvent e){
 				switch(e.getKeyCode()){
@@ -74,6 +85,14 @@ public class Tetromino_I extends Tetromino{
 					timer.setDelay(1);
 					break;
 					
+				case KeyEvent.VK_R:
+					pausePressed = (pausePressed + 1) % 2;
+					if(pausePressed == 1)
+						timer.stop();
+					else
+						timer.start();
+					break;
+					
 				default:
 					break;
 				}
@@ -81,10 +100,12 @@ public class Tetromino_I extends Tetromino{
 		});
 	}
 	
+	//Function to get Timer object
 	public Timer getTimer(){
 		return timer;
 	}
 	
+	//Function for paint graphic
 	public void paintComponent(Graphics g){
 		super.paintComponent(g);
 		boolean[][] tiles = new boolean[Main.ROWS][Main.COLS];
@@ -108,5 +129,4 @@ public class Tetromino_I extends Tetromino{
 			g.fillRect((xP[i] - 1)*SIZE + 1, yP[i]*SIZE + 1, SIZE - 2, SIZE - 2);
 		}
 	}
-
 }
