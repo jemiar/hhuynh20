@@ -1,15 +1,32 @@
+//CS 342 - SPRING 2016
+//Project 5: Tetris
+//Developed by: Hoang Minh Huynh Nguyen (hhuynh20) Nikolay Zakharov (nzakha2)
+
+//Class: Grid.java
+//Responsibility: manage the grid of the play board, position of the active tetromino and its direction
+//Implemented with Singleton design pattern.
+
 import java.util.Arrays;
 
 public class Grid {
 	private static Grid board = null;
+	//Matrix of the grid, add 3 more rows at the bottom, and 2 columns on the side to make
+	//checking tetromino getting outside of the board more easy
 	private boolean[][] tiles = new boolean[Main.ROWS + 3][Main.COLS + 2];
+	//Array: x coordinates of the tetromino
 	private int[] xPos = new int[4];
+	//Array: y coordinates of the tetromino
 	private int[] yPos = new int[4];
+	//Direction of the tetromino: 0.N, 1.W, 2.S, 3.E
 	private int direction;
+	//Type of tetromino: 1.I, 2.T, 3.O, 4.L, 5.J, 6.S, 7.Z
 	private int type;
+	//Variable to manage the height of tetromino pile
 	private int minY;
 	
+	//Private construction for the singleton pattern
 	private Grid(){
+		//Setup the grid
 		for(int i = 0; i < Main.ROWS; i++)
 			for(int j = 1; j < Main.COLS + 1; j++)
 				tiles[i][j] = false;
@@ -25,9 +42,19 @@ public class Grid {
 			tiles[i][Main.COLS + 1] = true;
 		}
 		
+		//Setup the height
 		minY = Main.ROWS;
 	}
 	
+	//Reset grid when user click restart button
+	public synchronized void resetGrid(){
+		for(int i = 0; i < Main.ROWS; i++)
+			for(int j = 1; j < Main.COLS + 1; j++)
+				tiles[i][j] = false;
+		minY = Main.ROWS;
+	}
+	
+	//Function to clear line when it is full
 	public void drop(int a){
 		if(a == minY){
 			tiles[a] = Arrays.copyOf(Main.emptyLine, Main.emptyLine.length);
@@ -41,14 +68,17 @@ public class Grid {
 		}
 	}
 	
+	//Function to get the height of the pile
 	public int getMinY(){
 		return minY;
 	}
 	
+	//Function to set the height of the pile
 	public void setMinY(int m){
 		minY = m;
 	}
 	
+	//Function to check if the tetromino can move down
 	public boolean canMoveDown(){
 		for(int i = 0; i < 4; i++){
 			if(tiles[yPos[i] + 1][xPos[i]])
@@ -57,34 +87,38 @@ public class Grid {
 		return true;
 	}
 	
+	//Function to check if the tetromino can move left
 	public boolean canMoveLeft(){
 		if(tiles[yPos[0]][xPos[0] - 1])
 			return false;
 		return true;
 	}
 	
+	//Function to check if the tetromino can move right
 	public boolean canMoveRight(){
 		if(tiles[yPos[3]][xPos[3] + 1])
 			return false;
 		return true;
 	}
 	
+	//Function: get an instance of the Grid class. Singleton pattern
 	public static synchronized Grid getInstance(){
 		if(board == null)
 			board = new Grid();
 		return board;
 	}
 	
+	//Function to set the type of the tetromino
 	public synchronized void setType(int t){
 		type = t;
 	}
 	
+	//Function to get the type of the tetromino
 	public int getType(){
 		return type;
 	}
 	
-	//check if a piece can rotate left, depend on parameter t(type of tetromino)
-	//I have create one example below for type I, (t = 1)
+	//Function to check if a tetromino can rotate left base on its position, its type and its direction
 	public boolean canRotateLeft(int t){
 		boolean b = false;
 		switch(t){
@@ -131,6 +165,10 @@ public class Grid {
 					b = true;
 				break;
 			}
+			break;
+			
+		case 3:
+			b = true;
 			break;
 			
 		case 4:
@@ -230,7 +268,7 @@ public class Grid {
 		return b;
 	}
 	
-	//same as above function
+	//Function to check if a tetromino can rotate right based on its position, its type and its direction
 	public boolean canRotateRight(int t){
 		boolean b = false;
 		switch(t){
@@ -276,6 +314,10 @@ public class Grid {
 					b = true;
 				break;
 			}
+			break;
+			
+		case 3:
+			b = true;
 			break;
 			
 		case 4:
@@ -374,8 +416,7 @@ public class Grid {
 		return b;
 	}
 	
-	//set up initial coordinate of the piece, based on type t
-	//I create one example for type I,
+	//Function to setup the initial position of the tetromino based on its type
 	public synchronized void setPiece(int t){
 		switch(t){
 		case 1:
@@ -456,10 +497,12 @@ public class Grid {
 		}
 	}
 	
+	//Function to set the direction of the tetromino
 	public synchronized void setDirection(int d){
 		direction = d;
 	}
 	
+	//Function to reset the position of the tetromino
 	public synchronized void resetPiece(){
 		for(int i = 0; i < 4; i++){
 			yPos[i] = 0;
@@ -467,25 +510,28 @@ public class Grid {
 		}
 	}
 	
+	//Function to move the tetromino down 1 step
 	public synchronized void pieceDown(){
 		for(int i = 0; i < 4; i++){
 			yPos[i] += 1;
 		}
 	}
 	
+	//Function to move the tetromino left 1 step
 	public synchronized void pieceLeft(){
 		for(int i = 0; i < 4; i++){
 			xPos[i] -= 1;
 		}
 	}
 	
+	//Function to move the tetromino right 1 step
 	public synchronized void pieceRight(){
 		for(int i = 0; i < 4; i++){
 			xPos[i] += 1;
 		}
 	}
 	
-	//rotate left function, based on type t
+	//Function to rotate the tetromino left based on its type and its position, and also its direction
 	public synchronized void rotateLeft(int t){
 		switch(t){
 		case 1:
@@ -566,6 +612,9 @@ public class Grid {
 			default:
 				break;
 			}
+			break;
+			
+		case 3:
 			break;
 			
 		case 4:
@@ -748,7 +797,7 @@ public class Grid {
 		}
 	}
 	
-	//rotate right function: based on type t
+	//Function to rotate the tetromino right based on its type and its position, and also its direction
 	public synchronized void rotateRight(int t){
 		switch(t){
 		case 1:
@@ -829,6 +878,9 @@ public class Grid {
 			default:
 				break;
 			}
+			break;
+			
+		case 3:
 			break;
 			
 		case 4:
@@ -1011,18 +1063,22 @@ public class Grid {
 		}
 	}
 	
+	//Function to get the array of x coordinates of the tetromino
 	public int[] getXPos(){
 		return xPos;
 	}
 	
+	//Function to get the array of y coordinates of the tetromino
 	public int[] getYPos(){
 		return yPos;
 	}
 	
+	//Function to get the grid matrix of the Grid object
 	public boolean[][] getTiles(){
 		return tiles;
 	}
 	
+	//Function to set the grid when the the tetromino is locked into place
 	public synchronized void setTiles(){
 		for(int i = 0; i < 4; i++)
 			tiles[yPos[i]][xPos[i]] = true;
