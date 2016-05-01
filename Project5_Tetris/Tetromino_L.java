@@ -1,3 +1,10 @@
+//CS 342 - SPRING 2016
+//Project 5: Tetris
+//Developed by: Hoang Minh Huynh Nguyen (hhuynh20) Nikolay Zakharov (nzakha2)
+
+//Class: Tetromino_L.java
+//Responsibility: Respresent the L Tetromino
+
 import javax.swing.Timer;
 import java.awt.*;
 import java.awt.event.*;
@@ -7,8 +14,10 @@ import java.util.Arrays;
 public class Tetromino_L extends Tetromino{
 	public Timer timer;
 	private static final int SIZE = 25;
+	private int pausePressed;
 	
-	public Tetromino_L(){
+	//Constructor
+	public Tetromino_L(int delay){
 		super();
 		setPreferredSize(new Dimension(Main.COLS*SIZE, Main.ROWS*SIZE));
 		Grid.getInstance().resetPiece();
@@ -16,8 +25,9 @@ public class Tetromino_L extends Tetromino{
 		Grid.getInstance().setPiece(Grid.getInstance().getType());
 		Grid.getInstance().setDirection(0);
 
+		pausePressed = 0;
 		
-		timer = new Timer(1000, new ActionListener(){
+		timer = new Timer(delay, new ActionListener(){
 			public void actionPerformed(ActionEvent e){
 				if(Grid.getInstance().canMoveDown()){
 					Grid.getInstance().pieceDown();
@@ -74,6 +84,14 @@ public class Tetromino_L extends Tetromino{
 					timer.setDelay(1);
 					break;
 					
+				case KeyEvent.VK_R:
+					pausePressed = (pausePressed + 1) % 2;
+					if(pausePressed == 1)
+						timer.stop();
+					else
+						timer.start();
+					break;
+					
 				default:
 					break;
 				}
@@ -81,10 +99,12 @@ public class Tetromino_L extends Tetromino{
 		});
 	}
 	
+	//Function to get the Timer object
 	public Timer getTimer(){
 		return timer;
 	}
 	
+	//Function to paint graphic
 	public void paintComponent(Graphics g){
 		super.paintComponent(g);
 		boolean[][] tiles = new boolean[Main.ROWS][Main.COLS];
